@@ -1,0 +1,60 @@
+services:
+  trino:
+    image: trinodb/trino:latest
+    container_name: trino
+    ports:
+      - 127.0.0.1:8080:8080
+    environment:
+      - RootUser=trinoadmin
+      - RootPass=trinoadmin
+    volumes:
+      - ./etc/Trino_config:/Trino_config
+    networks:
+      - trino-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - 127.0.0.1:9001:9001
+    environment:
+      - RootUser=minioadmin
+      - RootPass=minioadmin
+    volumes:
+      - ./etc/catalog:/catalog
+      - ./data:/data
+    command: minio server /data --console-address :9001
+    networks:
+      - trino-network
+
+  mariadb:
+    image: mariadb:latest
+    ports:
+      - 127.0.0.1:3307:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=admin
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=admin
+      - MYSQL_DATABASE=metastore_db
+    networks:
+      - trino-network
+
+  hive:
+    image: bitsondatadev/hive-metastore:latest
+    container_name: hive
+    ports:
+      - 127.0.0.1:9083:9083
+    environment:
+      - METASTORE_DB_HOSTNAME=mariadb
+    depends_on:
+      - mariadb
+    networks:
+      - trino-network
+
+volumes:
+  minio-data:
+    driver: local
+
+networks:
+  trino-network:
+    driver: bridge
